@@ -23,7 +23,7 @@ CDl = 9e-3
 CDr = 9e-4
 kt = 3.13e-5  # Ns^2
 km = 7.5e-7   # Ns^2
-kw = 1/0.18   # rad/s
+kw = 1.0/0.18   # rad/s
 
 # Initial conditions
 att_0 = np.array([0.0, 0.0, 0.0])
@@ -46,7 +46,7 @@ for idx in range(number_of_drones):
     qc_list[idx].yaw_d = 0
 
 # Simulation parameters
-tf = 200
+tf = 30
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
@@ -125,7 +125,13 @@ ke = 0.00285*2  # Gain for going towards circle
 kt = 0.01  # Gain for orbiting
 kf = 0.08  # Gain for formation
 
+drone_added = False
+
 for t in time:
+    if drone_added == False and t > 100: 
+        add_new_drone()
+        drone_added = True
+
     number_of_drones = len(qc_list) # Recalculate number of drones for all for-loops in the code.
 
     if number_of_drones > len(act_dist_list):
@@ -140,6 +146,8 @@ for t in time:
         des_dist_list = np.zeros(number_of_drones)
         for idx in range(0,len(angle_list)): # This only works for equal angles for the whole formation.
             des_dist_list[idx] = angle_to_chord(radius, angle_list[idx])
+
+        q_log_list = np.append(q_log_list, quadlog.quadlog(time))
 
     for i in range(0, number_of_drones):
         copter = qc_list[i]
@@ -182,7 +190,7 @@ for t in time:
                 print("Swapping some of the drones.")
                 get = qc_list[o], qc_list[idx]
                 qc_list[idx], qc_list[o] = get
-                qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 50*20
+                qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
     
 
     #print("Desired: ", des_dist_list)
@@ -268,7 +276,7 @@ for t in time:
         cid = fig.canvas.mpl_connect('key_press_event', on_key)
 
     # Log
-    for idx in range(0, 3):
+    for idx in range(0, number_of_drones): 
         q_log_list[idx].xyz_h[it, :] = qc_list[idx].xyz
         q_log_list[idx].att_h[it, :] = qc_list[idx].att
         q_log_list[idx].w_h[it, :] = qc_list[idx].w
@@ -293,9 +301,11 @@ for t in time:
 pl.figure(1)
 pl.title("2D Position [m]")
 pl.plot(qt_log.xyz_h[:, 0], qt_log.xyz_h[:, 1], label="qt", color=quadcolor[0])
-pl.plot(q_log_list[0].xyz_h[:, 0], q_log_list[0].xyz_h[:, 1], label="q1", color=quadcolor[1])
-pl.plot(q_log_list[1].xyz_h[:, 0], q_log_list[1].xyz_h[:, 1], label="q2", color=quadcolor[2])
-pl.plot(q_log_list[2].xyz_h[:, 0], q_log_list[2].xyz_h[:, 1], label="q3", color=quadcolor[3])
+for idx in range(0, number_of_drones):
+    pl.plot(q_log_list[idx].xyz_h[:, 0], q_log_list[idx].xyz_h[:, 1], label="q" + str(idx+1), color=quadcolor[idx+1])
+#pl.plot(q_log_list[0].xyz_h[:, 0], q_log_list[0].xyz_h[:, 1], label="q1", color=quadcolor[1])
+#pl.plot(q_log_list[1].xyz_h[:, 0], q_log_list[1].xyz_h[:, 1], label="q2", color=quadcolor[2])
+#pl.plot(q_log_list[2].xyz_h[:, 0], q_log_list[2].xyz_h[:, 1], label="q3", color=quadcolor[3])
 pl.xlabel("East")
 pl.ylabel("South")
 pl.legend()
@@ -314,11 +324,13 @@ for i in range(0, len(q_log_list[0].formation_error)):
  
 # Formation error plot
 pl.figure(2)
-pl.title("Formation Error of 3 Drones Over Time [m]")
-pl.plot(time, la.norm(q_log_list[0].formation_error, axis=1), label="Formation error q1")
-pl.plot(time, la.norm(q_log_list[1].formation_error, axis=1), label="Formation error q2")
-pl.plot(time, la.norm(q_log_list[2].formation_error, axis=1), label="Formation error q3")
-pl.plot(time, formation_error_total, label="Formation error total")
+pl.title("Formation Error of " + str(number_of_drones) + " Drones Over Time [m]")
+for idx in range(0, number_of_drones):
+    pl.plot(time, la.norm(q_log_list[idx].formation_error, axis=1), label="q"+str(idx+1), color=quadcolor[idx+1])
+#pl.plot(time, la.norm(q_log_list[0].formation_error, axis=1), label="Formation error q1")
+#pl.plot(time, la.norm(q_log_list[1].formation_error, axis=1), label="Formation error q2")
+#pl.plot(time, la.norm(q_log_list[2].formation_error, axis=1), label="Formation error q3")
+pl.plot(time, formation_error_total, label="Total", color=quadcolor[0], linewidth=2)
 pl.xlabel("Time [s]")
 pl.ylabel("Formation Error [m]")
 pl.grid()
@@ -326,11 +338,13 @@ pl.legend()
  
 # Circle error plot
 pl.figure(3)
-pl.title("Circle Error of 3 Drones Over Time [m]")
-pl.plot(time, q_log_list[0].circle_error[:,0], label="Circle error q1")
-pl.plot(time, q_log_list[1].circle_error[:,0], label="Circle error q2")
-pl.plot(time, q_log_list[2].circle_error[:,0], label="Circle error q3")
-pl.plot(time, circle_error_total, label="Circle error total")
+pl.title("Circle Error of " + str(number_of_drones) + " Drones Over Time [m]")
+for idx in range(0, number_of_drones):
+    pl.plot(time, q_log_list[idx].circle_error[:,0], label="q"+str(idx+1), color=quadcolor[idx+1])
+#pl.plot(time, q_log_list[0].circle_error[:,0], label="Circle error q1")
+#pl.plot(time, q_log_list[1].circle_error[:,0], label="Circle error q2")
+#pl.plot(time, q_log_list[2].circle_error[:,0], label="Circle error q3")
+pl.plot(time, circle_error_total, label="Circle error total", color=quadcolor[0], linewidth=2)
 pl.xlabel("Time [s]")
 pl.ylabel("Circle Error Squared [m]")
 pl.grid()
