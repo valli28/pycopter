@@ -187,7 +187,7 @@ for t in time:
                     i = number_of_drones - 1
                 if idx == number_of_drones - 1:
                     o = 0 
-                print("[" + str(t) + "] - Swapping some of the drones.")
+                print("[" + str(t) + "] - Swapping drone q" + str(o+1) + " and q" str(idx+1))
                 get = qc_list[o], qc_list[idx]
                 qc_list[idx], qc_list[o] = get
                 qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
