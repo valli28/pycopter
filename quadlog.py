@@ -11,4 +11,4 @@ class quadlog:
         self.xi_g_h = np.zeros(time.size)
         self.xi_CD_h = np.zeros(time.size)
         self.formation_error = np.zeros((time.size))
-        self.circle_error = np.zeros((time.size, 2))
+        self.circle_error = np.zeros((time.size))

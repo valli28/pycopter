@@ -36,13 +36,13 @@ v_ned_0 = np.array([0.0, 0.0, 0.0])
 w_0 = np.array([0.0, 0.0, 0.0, 0.0])
 
 # Setting quads
-qt = quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0, v_ned_0, w_0)
+qt = quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0, v_ned_0, w_0, 0)
 
 number_of_drones = 3
 alt_d = 2
 qc_list = np.empty((0, 1))
 for idx in range(number_of_drones):
-    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0))
+    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0, idx + 1))
     qc_list[idx].yaw_d = 0
 
 # Simulation parameters
@@ -117,7 +117,7 @@ inter_angle_list = np.zeros(number_of_drones)
 
 def add_new_drone():
     global qc_list
-    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0))
+    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0, number_of_drones+1))
     qc_list[number_of_drones - 1].yaw_d = 0
 
 
@@ -126,7 +126,7 @@ kt = 0.001  # Gain for orbiting
 kf = 0.08 *0.6 # Gain for formation
 
 drone_added = False
-drone_added = True
+#drone_added = True
 
 do_animation = False
 
@@ -191,9 +191,14 @@ for t in time:
                 if idx == number_of_drones - 1:
                     o = 0 
                 print("[" + str(t) + "] - Swapping drone q" + str(o+1) + " and q" + str(idx+1))
+                # Swap the drones
                 get = qc_list[o], qc_list[idx]
                 qc_list[idx], qc_list[o] = get
+                # Reset the cooldown on these drones
                 qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
+                # Swap the colors as well, so it won't look weird in the graphs
+                get_color = quadcolor[o+1], quadcolor[idx+1]
+                quadcolor[idx+1], quadcolor[o+1] = get_color
     
 
     #print("Desired: ", des_dist_list)
@@ -313,16 +318,33 @@ pl.xlabel("East")
 pl.ylabel("South")
 pl.legend()
 
+# Calculate the formation error for all drones
+formation_error_total = np.array([])
+for idx in range(0, number_of_drones):
+    formation_error_total = np.append(formation_error_total, q_log_list[idx].formation_error)
+formation_error_total = np.reshape(formation_error_total, (number_of_drones, formation_error_total.size/number_of_drones))
+formation_error_total = np.sum(formation_error_total, axis=0)
 
 # Calculate the formation error for the first 3 drones only.
-formation_error_total = np.array([])
-for i in range(0, len(q_log_list[0].formation_error)):
-    formation_error_total = np.append(formation_error_total, (la.norm(q_log_list[0].formation_error[i]) + la.norm(q_log_list[1].formation_error[i]) + la.norm(q_log_list[2].formation_error[i])))
+#formation_error_total = np.array([])
+#for i in range(0, len(q_log_list[0].formation_error)):
+#    formation_error_total = np.append(formation_error_total, (la.norm(q_log_list[0].formation_error[i]) + la.norm(q_log_list[1].formation_error[i]) + la.norm(q_log_list[2].formation_error[i])))
  
-# Calculate the circle error for the first 3 drones only.
 circle_error_total = np.array([])
-for i in range(0, len(q_log_list[0].formation_error)):
-    circle_error_total = np.append(circle_error_total, ((la.norm(q_log_list[0].circle_error[i]) + la.norm(q_log_list[1].circle_error[i]) + la.norm(q_log_list[2].circle_error[i]))))
+for idx in range(0, number_of_drones):
+    circle_error_total = np.append(circle_error_total, q_log_list[idx].circle_error)
+print(circle_error_total.shape)
+circle_error_total = np.reshape(circle_error_total, (number_of_drones, circle_error_total.size/number_of_drones))
+print(circle_error_total.shape)
+
+circle_error_total = np.sum(circle_error_total, axis=0)
+print(circle_error_total.shape)
+
+
+# Calculate the circle error for the first 3 drones only.
+#circle_error_total = np.array([])
+#for i in range(0, len(q_log_list[0].formation_error)):
+#    circle_error_total = np.append(circle_error_total, ((la.norm(q_log_list[0].circle_error[i]) + la.norm(q_log_list[1].circle_error[i]) + la.norm(q_log_list[2].circle_error[i]))))
  
 
 # Formation error plot
@@ -343,7 +365,7 @@ pl.legend()
 pl.figure(3)
 pl.title("Circle Error of " + str(number_of_drones) + " Drones Over Time [m]")
 for idx in range(0, number_of_drones):
-    pl.plot(time, q_log_list[idx].circle_error[:,0], label="q"+str(idx+1), color=quadcolor[idx+1])
+    pl.plot(time, q_log_list[idx].circle_error, label="q"+str(idx+1), color=quadcolor[idx+1])
 #pl.plot(time, q_log_list[0].circle_error[:,0], label="Circle error q1")
 #pl.plot(time, q_log_list[1].circle_error[:,0], label="Circle error q2")
 #pl.plot(time, q_log_list[2].circle_error[:,0], label="Circle error q3")

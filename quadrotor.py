@@ -3,7 +3,7 @@ from scipy import linalg as la
 
 class quadrotor:
     def __init__(self, tag, m, l, J, CDl, CDr, kt, km, kw, att, \
-            pqr, xyz, v_ned, w):
+            pqr, xyz, v_ned, w, idx):
         # physical constants
         self.tag = tag
         self.m = m   # [Kg]
@@ -76,6 +76,7 @@ class quadrotor:
         self.rel_xyz = 0
         self.neighbour_vector = 0
         self.cooldown = 100*20
+        self.identification = idx
 
     ### GNC Functions ###
     def control_att(self):
