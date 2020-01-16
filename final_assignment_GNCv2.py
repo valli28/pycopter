@@ -46,7 +46,7 @@ for idx in range(number_of_drones):
     qc_list[idx].yaw_d = 0
 
 # Simulation parameters
-tf = 400
+tf = 200
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
@@ -121,11 +121,14 @@ def add_new_drone():
     qc_list[number_of_drones - 1].yaw_d = 0
 
 
-ke = 0.00285*2  # Gain for going towards circle
-kt = 0.01  # Gain for orbiting
-kf = 0.08  # Gain for formation
+ke = 0.00285*2 *0.8  # Gain for going towards circle
+kt = 0.001  # Gain for orbiting
+kf = 0.08 *0.6 # Gain for formation
 
 drone_added = False
+drone_added = True
+
+do_animation = False
 
 for t in time:
     if drone_added == False and t > 100: 
@@ -187,7 +190,7 @@ for t in time:
                     i = number_of_drones - 1
                 if idx == number_of_drones - 1:
                     o = 0 
-                print("[" + str(t) + "] - Swapping drone q" + str(o+1) + " and q" str(idx+1))
+                print("[" + str(t) + "] - Swapping drone q" + str(o+1) + " and q" + str(idx+1))
                 get = qc_list[o], qc_list[idx]
                 qc_list[idx], qc_list[o] = get
                 qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
@@ -248,7 +251,7 @@ for t in time:
 
 
     # Animation
-    if it % frames == 0:
+    if it % frames == 0 and do_animation == True:
 
         pl.figure(0)
         axis3d.cla()
@@ -281,7 +284,7 @@ for t in time:
         q_log_list[idx].att_h[it, :] = qc_list[idx].att
         q_log_list[idx].w_h[it, :] = qc_list[idx].w
         q_log_list[idx].v_ned_h[it, :] = qc_list[idx].v_ned
-        q_log_list[idx].formation_error[it, :] = formation_list[idx]
+        q_log_list[idx].formation_error[it] = err_dist_list[idx]
         q_log_list[idx].circle_error[it] = e_list[idx]
         
     qt_log.xyz_h[it, :] = qt.xyz
@@ -321,12 +324,12 @@ circle_error_total = np.array([])
 for i in range(0, len(q_log_list[0].formation_error)):
     circle_error_total = np.append(circle_error_total, ((la.norm(q_log_list[0].circle_error[i]) + la.norm(q_log_list[1].circle_error[i]) + la.norm(q_log_list[2].circle_error[i]))))
  
- 
+
 # Formation error plot
 pl.figure(2)
 pl.title("Formation Error of " + str(number_of_drones) + " Drones Over Time [m]")
 for idx in range(0, number_of_drones):
-    pl.plot(time, la.norm(q_log_list[idx].formation_error, axis=1), label="q"+str(idx+1), color=quadcolor[idx+1])
+    pl.plot(time, q_log_list[idx].formation_error, label="q"+str(idx+1), color=quadcolor[idx+1])
 #pl.plot(time, la.norm(q_log_list[0].formation_error, axis=1), label="Formation error q1")
 #pl.plot(time, la.norm(q_log_list[1].formation_error, axis=1), label="Formation error q2")
 #pl.plot(time, la.norm(q_log_list[2].formation_error, axis=1), label="Formation error q3")
