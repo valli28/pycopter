@@ -46,7 +46,7 @@ for idx in range(number_of_drones):
     qc_list[idx].yaw_d = 0
 
 # Simulation parameters
-tf = 30
+tf = 400
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
@@ -135,7 +135,7 @@ for t in time:
     number_of_drones = len(qc_list) # Recalculate number of drones for all for-loops in the code.
 
     if number_of_drones > len(act_dist_list):
-        print("Adding new drone and reinitializing vectors")
+        print("[" + str(t) + "] - Adding new drone and reinitializing vectors")
         act_dist_list = np.zeros((number_of_drones))
         err_dist_list = np.zeros(number_of_drones)
         unit_vector_list = np.zeros((number_of_drones, 3))
@@ -187,7 +187,7 @@ for t in time:
                     i = number_of_drones - 1
                 if idx == number_of_drones - 1:
                     o = 0 
-                print("Swapping some of the drones.")
+                print("[" + str(t) + "] - Swapping some of the drones.")
                 get = qc_list[o], qc_list[idx]
                 qc_list[idx], qc_list[o] = get
                 qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
