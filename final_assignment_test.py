@@ -7,7 +7,7 @@ import formation_distance as form
 import quadlog
 import animation as ani
 
-from final_assignment_GNCv2 import quadSimulator 
+from quadsim import quadSimulator
 
 class bigLogger:
     def __init__(self, repetitions, time):
@@ -16,10 +16,10 @@ class bigLogger:
 
         self.xyz_h = np.empty((self.n, time, 3))
         self.formation_error = np.empty((self.n, time))
-        self.circle_error = np.empty((self.n, time, 2))
+        self.circle_error = np.empty((self.n, time))
 
     def calculate_descriptive_statistics(self):
-        print("Calculating descriptive statistics from " + str(self.n) + " repetitions")
+        print("Calculating descriptive statistics from " + str(self.n) + " repetitions") 
         return self.n
 
     def add_stats(self, rep, xyz, formation, circle):
@@ -45,11 +45,10 @@ logger = bigLogger(n, int(tf/dt))
 for repetition in range(0, n):
     print("Run number " + str(repetition+1))
 
-    quadsim = quadSimulator(tf, dt, time, it, frames, n_drones)
-    q_log_list, qt_log, drone_id_list = quadsim.run_simulation()    
-    quadcolor = quadsim.quadcolor
-    number_of_drones = quadsim.number_of_drones
-
+    sim = quadSimulator(tf, dt, time, it, frames, n_drones)
+    q_log_list, qt_log, drone_id_list = sim.run_simulation()    
+    quadcolor = sim.quadcolor
+    number_of_drones = sim.number_of_drones
 
     for idx in range(0, number_of_drones):
         logger.add_stats(repetition, q_log_list[idx].xyz_h, q_log_list[idx].formation_error, q_log_list[idx].circle_error)
@@ -59,58 +58,3 @@ print(logger.formation_error.shape)
 
 stats = logger.calculate_descriptive_statistics()
 
-
-pl.figure(1)
-pl.title("2D Position [m]")
-pl.plot(qt_log.xyz_h[:, 0], qt_log.xyz_h[:, 1], label="qt", color=quadcolor[0])
-for idx in range(0, number_of_drones):
-    pl.plot(q_log_list[idx].xyz_h[:, 0], q_log_list[idx].xyz_h[:, 1], label="q" + str(idx+1), color=quadcolor[idx+1])
-#pl.plot(q_log_list[0].xyz_h[:, 0], q_log_list[0].xyz_h[:, 1], label="q1", color=quadcolor[1])
-#pl.plot(q_log_list[1].xyz_h[:, 0], q_log_list[1].xyz_h[:, 1], label="q2", color=quadcolor[2])
-#pl.plot(q_log_list[2].xyz_h[:, 0], q_log_list[2].xyz_h[:, 1], label="q3", color=quadcolor[3])
-pl.xlabel("East")
-pl.ylabel("South")
-pl.legend()
-
-
-# Calculate the formation error for the first 3 drones only.
-formation_error_total = np.array([])
-for i in range(0, len(q_log_list[0].formation_error)):
-    formation_error_total = np.append(formation_error_total, (la.norm(q_log_list[0].formation_error[i]) + la.norm(q_log_list[1].formation_error[i]) + la.norm(q_log_list[2].formation_error[i])))
- 
-# Calculate the circle error for the first 3 drones only.
-circle_error_total = np.array([])
-for i in range(0, len(q_log_list[0].formation_error)):
-    circle_error_total = np.append(circle_error_total, ((la.norm(q_log_list[0].circle_error[i]) + la.norm(q_log_list[1].circle_error[i]) + la.norm(q_log_list[2].circle_error[i]))))
- 
-
-# Formation error plot
-pl.figure(2)
-pl.title("Formation Error of " + str(number_of_drones) + " Drones Over Time [m]")
-for idx in range(0, number_of_drones):
-    pl.plot(time, q_log_list[idx].formation_error, label="q"+str(idx+1), color=quadcolor[idx+1])
-#pl.plot(time, la.norm(q_log_list[0].formation_error, axis=1), label="Formation error q1")
-#pl.plot(time, la.norm(q_log_list[1].formation_error, axis=1), label="Formation error q2")
-#pl.plot(time, la.norm(q_log_list[2].formation_error, axis=1), label="Formation error q3")
-pl.plot(time, formation_error_total, label="Total", color=quadcolor[0], linewidth=2)
-pl.xlabel("Time [s]")
-pl.ylabel("Formation Error [m]")
-pl.grid()
-pl.legend()
- 
-# Circle error plot
-pl.figure(3)
-pl.title("Circle Error of " + str(number_of_drones) + " Drones Over Time [m]")
-for idx in range(0, number_of_drones):
-    pl.plot(time, q_log_list[idx].circle_error[:,0], label="q"+str(idx+1), color=quadcolor[idx+1])
-#pl.plot(time, q_log_list[0].circle_error[:,0], label="Circle error q1")
-#pl.plot(time, q_log_list[1].circle_error[:,0], label="Circle error q2")
-#pl.plot(time, q_log_list[2].circle_error[:,0], label="Circle error q3")
-pl.plot(time, circle_error_total, label="Circle error total", color=quadcolor[0], linewidth=2)
-pl.xlabel("Time [s]")
-pl.ylabel("Circle Error Squared [m]")
-pl.grid()
-pl.legend()
-
-
-pl.pause(0)
