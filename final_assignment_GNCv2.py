@@ -7,312 +7,329 @@ import formation_distance as form
 import quadlog
 import animation as ani
 
-# Quadrotor
-m = 0.65  # Kg
-l = 0.23  # m
-Jxx = 7.5e-3  # Kg/m^2
-Jyy = Jxx
-Jzz = 1.3e-2
-Jxy = 0
-Jxz = 0
-Jyz = 0
-J = np.array([[Jxx, Jxy, Jxz],
-              [Jxy, Jyy, Jyz],
-              [Jxz, Jyz, Jzz]])
-CDl = 9e-3
-CDr = 9e-4
-kt = 3.13e-5  # Ns^2
-km = 7.5e-7   # Ns^2
-kw = 1.0/0.18   # rad/s
-
-# Initial conditions
-att_0 = np.array([0.0, 0.0, 0.0])
-pqr_0 = np.array([0.0, 0.0, 0.0])
-xyzt_0 = np.array([0.0, 0.0, -0.0])
-xyz1_0 = np.array([1.0, 1.2, -0.0])
-xyz2_0 = np.array([1.2, 2.0, -0.0])
-xyz3_0 = np.array([-1.1, 2.6, -0.0])
-v_ned_0 = np.array([0.0, 0.0, 0.0])
-w_0 = np.array([0.0, 0.0, 0.0, 0.0])
-
-# Setting quads
-qt = quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0, v_ned_0, w_0, 't')
-
-number_of_drones = 3
-alt_d = 2
-qc_list = np.empty((0, 1))
-for idx in range(number_of_drones):
-    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0, idx))
-    qc_list[idx].yaw_d = 0
 
 # Simulation parameters
-tf = 200
+tf = 700
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
 frames = 50
 
-# Data log
-qt_log = quadlog.quadlog(time)
-q_log_list = np.empty((0,1))
-for idx in range(number_of_drones):
-    q_log_list = np.append(q_log_list, quadlog.quadlog(time))
-#q1_log = quadlog.quadlog(time)
-#q2_log = quadlog.quadlog(time)
-#q3_log = quadlog.quadlog(time)
+n_drones = 3
 
-# Plots
-quadcolor = ['m', 'r', 'g', 'b', 'c', 'y', 'k', 'w', 'r', 'g', 'b', 'c', 'y', 'k', 'w', 'r', 'g', 'b', 'c', 'y', 'k', 'w']
-pl.close("all")
-pl.ion()
-fig = pl.figure(0)
-axis3d = fig.add_subplot(111, projection='3d')
+class quadSimulator:
+    def __init__(self, tf, dt, time, it, frames, number_of_drones):
 
-init_area = 5
-s = 2
+        self.number_of_drones = number_of_drones
+        self.frames = frames
+        self.it = it
+        self.time = time
+        self.dt = dt
+        self.tf = tf
 
-# Constants
-tangentHelp = np.array([[0, -1], [1, 0]])
+        # Quadrotor
+        self.m = 0.65  # Kg
+        self.l = 0.23  # m
+        Jxx = 7.5e-3  # Kg/m^2
+        Jyy = Jxx
+        Jzz = 1.3e-2
+        Jxy = 0
+        Jxz = 0
+        Jyz = 0
+        self.J = np.array([[Jxx, Jxy, Jxz],
+                    [Jxy, Jyy, Jyz],
+                    [Jxz, Jyz, Jzz]])
+        self.CDl = 9e-3
+        self.CDr = 9e-4
+        self.kt = 3.13e-5  # Ns^2
+        self.km = 7.5e-7   # Ns^2
+        self.kw = 1.0/0.18   # rad/s
 
-# Calculation and helper functions 
-def impPath(x, y, r):
-	return ((x-qt.xyz[0])**2 + (y-qt.xyz[1])**2 - r**2)
+        # Initial conditions
+        self.att_0 = np.array([0.0, 0.0, 0.0])
+        self.pqr_0 = np.array([0.0, 0.0, 0.0])
+        self.xyzt_0 = np.array([0.0, 0.0, -0.0])
+        self.v_ned_0 = np.array([0.0, 0.0, 0.0])
+        self.w_0 = np.array([0.0, 0.0, 0.0, 0.0])
 
-def angle_to_chord(radius, angle):
-    return (2 * radius * np.sin((angle / 57.3) / 2))
+        # Setting quads
+        self.qt = quad.quadrotor(0, self.m, self.l, self.J, self.CDl, self.CDr, self.kt, self.km, self.kw, self.att_0, self.pqr_0, self.xyzt_0, self.v_ned_0, self.w_0, 't')
 
-def to_euclid(xyz):
-	return (np.sqrt(xyz[0]*xyz[0] + xyz[1]*xyz[1] + xyz[2]*xyz[2]))
+        self.alt_d = 2
+        self.qc_list = np.empty((0, 1))
+        for idx in range(number_of_drones):
+            self.qc_list = np.append(self.qc_list, quad.quadrotor(0, self.m, self.l, self.J, self.CDl, self.CDr, self.kt, self.km, self.kw, self.att_0, self.pqr_0, self.xyzt_0 + np.append([np.random.rand(1,2)], 0.0), self.v_ned_0, self.w_0, idx))
+            self.qc_list[idx].yaw_d = 0
 
-def sigmoid(u):
-    mag = np.linalg.norm(u)
-    range_s = 7.0
-    curv = -0.5
-    new_mag = (range_s / (1 + 2.73 ** ((curv) * mag))) - range_s/2
-    mag_scale = new_mag / mag
-    new_u = u * mag_scale
-    return new_u
+        # Data log
+        self.qt_log = quadlog.quadlog(time)
+        self.q_log_list = np.empty((0,1))
+        for idx in range(number_of_drones):
+            self.q_log_list = np.append(self.q_log_list, quadlog.quadlog(time))
+        #q1_log = quadlog.quadlog(time)
+        #q2_log = quadlog.quadlog(time)
+        #q3_log = quadlog.quadlog(time)
 
-def angle_between_unit_vectors(v0, v1):
-    angle = np.math.atan2(np.linalg.det([v0[0:2],v1[0:2]]),np.dot(v0[0:2],v1[0:2]))
-    return np.abs(np.degrees(angle))
-	
-def on_key(event): # Add a new drone here.
-    #print('you pressed', event.key, event.xdata, event.ydata)
-    if event.key == 'a':
-        add_new_drone()
+        # Plots
+        self.quadcolor = ['m', 'r', 'g', 'b', 'c', 'y', 'k', 'w', 'r', 'g', 'b', 'c', 'y', 'k', 'w', 'r', 'g', 'b', 'c', 'y', 'k', 'w']
+        pl.close("all")
+        pl.ion()
+        fig = pl.figure(0)
+        self.axis3d = fig.add_subplot(111, projection='3d')
 
-radius = 2
+        self.init_area = 5
+        self.s = 2
+        
+        self.number_of_swaps = 0
 
-angle = 360 / number_of_drones
-angle_list = np.ones(number_of_drones)*angle
-des_dist_list = np.zeros(number_of_drones)
-for idx in range(0,len(angle_list)): # This only works for equal angles for the whole formation.
-	des_dist_list[idx] = angle_to_chord(radius, angle_list[idx])
+        # Constants
+        self.tangentHelp = np.array([[0, -1], [1, 0]])
 
-act_dist_list = np.zeros((number_of_drones))
-err_dist_list = np.zeros(number_of_drones)
-unit_vector_list = np.zeros((number_of_drones, 3))
-inter_angle_list = np.zeros(number_of_drones)
+    # Calculation and helper functions 
+    def impPath(self, x, y, r):
+        return ((x-self.qt.xyz[0])**2 + (y-self.qt.xyz[1])**2 - r**2)
 
-def add_new_drone():
-    global qc_list
-    qc_list = np.append(qc_list, quad.quadrotor(0, m, l, J, CDl, CDr, kt, km, kw, att_0, pqr_0, xyzt_0 + np.append([np.random.rand(1,2)], 0.0), v_ned_0, w_0, number_of_drones))
-    qc_list[number_of_drones - 1].yaw_d = 0
+    def angle_to_chord(self, radius, angle):
+        return (2 * radius * np.sin((angle / 57.3) / 2))
 
+    def to_euclid(self, xyz):
+        return (np.sqrt(xyz[0]*xyz[0] + xyz[1]*xyz[1] + xyz[2]*xyz[2]))
 
-ke = 0.00285*2 *0.8  # Gain for going towards circle
-kt = 0.001  # Gain for orbiting
-kf = 0.08 *0.6 # Gain for formation
+    def sigmoid(self, u):
+        mag = np.linalg.norm(u)
+        range_s = 7.0
+        curv = -0.5
+        new_mag = (range_s / (1 + 2.73 ** ((curv) * mag))) - range_s/2
+        mag_scale = new_mag / mag
+        new_u = u * mag_scale
+        return new_u
 
-drone_added = False
-#drone_added = True
+    def angle_between_unit_vectors(self, v0, v1):
+        angle = np.math.atan2(np.linalg.det([v0[0:2],v1[0:2]]),np.dot(v0[0:2],v1[0:2]))
+        return np.abs(np.degrees(angle))
+        
+    #def on_key(self, event): # Add a new drone here.
+    #    #print('you pressed', event.key, event.xdata, event.ydata)
+    #    if event.key == 'a':
+    #        add_new_drone()
 
-do_animation = False
+    def add_new_drone(self):
+        self.qc_list = np.append(self.qc_list, quad.quadrotor(0, self.m, self.l, self.J, self.CDl, self.CDr, self.kt, self.km, self.kw, self.att_0, self.pqr_0, self.xyzt_0 + np.append([np.random.rand(1,2)], 0.0), self.v_ned_0, self.w_0, self.number_of_drones))
+        self.qc_list[self.number_of_drones - 1].yaw_d = 0
 
-for t in time:
-    # If we want to add anew drone
-    if drone_added == False and t > 100: 
-        add_new_drone()
-        drone_added = True
+    def run_simulation(self):
+        radius = 2
 
-    number_of_drones = len(qc_list) # Recalculate number of drones for all for-loops in the code.
-
-    if number_of_drones > len(act_dist_list):
-        print("[" + str(t) + "] - Adding new drone and reinitializing vectors")
-        act_dist_list = np.zeros((number_of_drones))
-        err_dist_list = np.zeros(number_of_drones)
-        unit_vector_list = np.zeros((number_of_drones, 3))
-        inter_angle_list = np.zeros(number_of_drones)
-
-        angle = 360 / number_of_drones
-        angle_list = np.ones(number_of_drones)*angle
-        des_dist_list = np.zeros(number_of_drones)
+        angle = 360 / self.number_of_drones
+        angle_list = np.ones(self.number_of_drones)*angle
+        des_dist_list = np.zeros(self.number_of_drones)
         for idx in range(0,len(angle_list)): # This only works for equal angles for the whole formation.
-            des_dist_list[idx] = angle_to_chord(radius, angle_list[idx])
+            des_dist_list[idx] = self.angle_to_chord(radius, angle_list[idx])
 
-        q_log_list = np.append(q_log_list, quadlog.quadlog(time))
+        act_dist_list = np.zeros(self.number_of_drones)
+        err_dist_list = np.zeros(self.number_of_drones)
+        unit_vector_list = np.zeros((self.number_of_drones, 3))
+        inter_angle_list = np.zeros(self.number_of_drones)
 
-    drone_id_list = []
-    for idx in range(0, number_of_drones):
-        drone_id_list.append(qc_list[idx].identification)
-    print(drone_id_list)
+        ke = 0.00285*2 *0.7  # Gain for going towards circle
+        kt = 0.001  # Gain for orbiting
+        kf = 0.08 *0.5 # Gain for formation
 
-    for i in drone_id_list:
-        copter = qc_list[i]
-        copter.broadcast_rel_xyz(qt)
+        drone_added = False
+        #drone_added = True
 
-    for idx in drone_id_list:
-        act_dist_list[idx] = to_euclid(qc_list[idx].calc_neighbour_vector(qc_list[(idx + 1) % number_of_drones]))
+        do_animation = False
 
-    for idx in drone_id_list:
-        err_dist_list[idx] = act_dist_list[idx] - des_dist_list[idx]
+        for self.t in self.time:
+            # If we want to add a new drone
+            if drone_added == False and int(self.t % 100) == 0 and self.t > 1.0: 
+                self.add_new_drone()
+                drone_added = True
+
+            self.number_of_drones = len(self.qc_list) # Recalculate number of drones for all for-loops in the code.
+
+            if self.number_of_drones > len(act_dist_list):
+                print("[" + str(self.t) + "] - Adding new drone and reinitializing vectors")
+                act_dist_list = np.zeros((self.number_of_drones))
+                err_dist_list = np.zeros(self.number_of_drones)
+                unit_vector_list = np.zeros((self.number_of_drones, 3))
+                inter_angle_list = np.zeros(self.number_of_drones)
+
+                angle = 360 / self.number_of_drones
+                angle_list = np.ones(self.number_of_drones)*angle
+                des_dist_list = np.zeros(self.number_of_drones)
+                for idx in range(0,len(angle_list)): # This only works for equal angles for the whole formation.
+                    des_dist_list[idx] = self.angle_to_chord(radius, angle_list[idx])
+
+                self.q_log_list = np.append(self.q_log_list, quadlog.quadlog(time))
+
+            drone_id_list = []
+            for idx in range(0, self.number_of_drones):
+                drone_id_list.append(self.qc_list[idx].identification)
+
+            for i in drone_id_list:
+                copter = self.qc_list[i]
+                copter.broadcast_rel_xyz(self.qt)
+
+            for idx in drone_id_list:
+                act_dist_list[idx] = self.to_euclid(self.qc_list[idx].calc_neighbour_vector(self.qc_list[(idx + 1) % self.number_of_drones]))
+
+            for idx in drone_id_list:
+                err_dist_list[idx] = act_dist_list[idx] - des_dist_list[idx]
 
 
-    #print(unit_vector_list.shape)
-    #print(len(qc_list))
-    #print(act_dist_list)
-    
-    for idx in drone_id_list:
-        for i in range (0, 3):
-            unit_vector_list[idx][i] = qc_list[idx].calc_neighbour_vector(qc_list[(idx + 1) % number_of_drones])[i] / act_dist_list[idx]
+            #print(unit_vector_list.shape)
+            #print(len(qc_list))
+            #print(act_dist_list)
+            
+            for idx in drone_id_list:
+                for i in range (0, 3):
+                    unit_vector_list[idx][i] = self.qc_list[idx].calc_neighbour_vector(self.qc_list[(idx + 1) % self.number_of_drones])[i] / act_dist_list[idx]
 
-    # Formation adjustment by rearranging drones in the list depending on the angles between them
-    
-    for idx in drone_id_list:
-        i = idx - 1 # A delayed counter that wraps in the beginning.
-        o = idx + 1 # A hastened counter that wraps in the end.
-        if idx == 0:
-            i = number_of_drones - 1
-        if idx == number_of_drones - 1:
-            o = 0 
-        inter_angle_list[idx] = angle_between_unit_vectors(qc_list[i].xyz - qc_list[idx].xyz, qc_list[o].xyz - qc_list[idx].xyz)
-    for idx in range (0, number_of_drones):
-        if inter_angle_list[idx] < 30:
-            if qc_list[idx].cooldown < 0 and qc_list[i].cooldown < 0 and qc_list[o].cooldown < 0:
+            # Formation adjustment by rearranging drones in the list depending on the angles between them
+            
+            for idx in drone_id_list:
                 i = idx - 1 # A delayed counter that wraps in the beginning.
                 o = idx + 1 # A hastened counter that wraps in the end.
                 if idx == 0:
-                    i = number_of_drones - 1
-                if idx == number_of_drones - 1:
+                    i = self.number_of_drones - 1
+                if idx == self.number_of_drones - 1:
                     o = 0 
-                print("[" + str(t) + "] - Swapping drone q" + str(o+1) + " and q" + str(idx+1))
-                # Swap the drones
-                get = qc_list[o], qc_list[idx]
-                qc_list[idx], qc_list[o] = get
-                # Reset the cooldown on these drones
-                qc_list[idx].cooldown = qc_list[o].cooldown = qc_list[i].cooldown = 75*20
-                # Swap the colors as well, so it won't look weird in the graphs
-                get_color = quadcolor[o+1], quadcolor[idx+1]
-                quadcolor[idx+1], quadcolor[o+1] = get_color
-    
+                inter_angle_list[idx] = self.angle_between_unit_vectors(self.qc_list[i].xyz - self.qc_list[idx].xyz, self.qc_list[o].xyz - self.qc_list[idx].xyz)
+            for idx in range (0, self.number_of_drones):
+                if inter_angle_list[idx] < 35:
+                    if self.qc_list[idx].cooldown < 0 and self.qc_list[i].cooldown < 0 and self.qc_list[o].cooldown < 0:
+                        i = idx - 1 # A delayed counter that wraps in the beginning.
+                        o = idx + 1 # A hastened counter that wraps in the end.
+                        if idx == 0:
+                            i = self.number_of_drones - 1
+                        if idx == self.number_of_drones - 1:
+                            o = 0 
+                        print("[" + str(self.t) + "] - Swapping drone q" + str(o+1) + " and q" + str(idx+1))
+                        # Swap the drones
+                        get = self.qc_list[o], self.qc_list[idx]
+                        self.qc_list[idx], self.qc_list[o] = get
+                        # Reset the cooldown on these drones
+                        self.qc_list[idx].cooldown = self.qc_list[o].cooldown = self.qc_list[i].cooldown = 120*20
+                        self.number_of_swaps += 1
+                        # Swap the colors as well, so it won't look weird in the graphs
+                        #get_color = quadcolor[o+1], quadcolor[idx+1]
+                        #quadcolor[idx+1], quadcolor[o+1] = get_color
+            
 
-    #print("Desired: ", des_dist_list)
-    #print("Actual: ", act_dist_list)
-    #print("Errors: ", err_dist_list)
-    #print("unit_vectors: " , unit_vector_list)
+            #print("Desired: ", des_dist_list)
+            #print("Actual: ", act_dist_list)
+            #print("Errors: ", err_dist_list)
+            #print("unit_vectors: " , unit_vector_list)
 
-    # Simulation
-    X = V = []
-    for idx in drone_id_list:
-        X = np.append(X, qc_list[idx].xyz[0:2])
-        V = np.append(V, qc_list[idx].v_ned[0:2])
+            # Simulation
+            X = V = []
+            for idx in drone_id_list:
+                X = np.append(X, self.qc_list[idx].xyz[0:2])
+                V = np.append(V, self.qc_list[idx].v_ned[0:2])
 
-    grad_list = np.empty((0,2))
-    for i in drone_id_list:    
-        grad_list = np.append(grad_list, np.array([[(X[i*2] - qt.xyz[0])*2, (X[i*2 + 1] - qt.xyz[1])*2]]), axis=0)
+            grad_list = np.empty((0,2))
+            for i in drone_id_list:    
+                grad_list = np.append(grad_list, np.array([[(X[i*2] - self.qt.xyz[0])*2, (X[i*2 + 1] - self.qt.xyz[1])*2]]), axis=0)
 
-    tangent_list = np.empty((0,2))
-    for idx in drone_id_list:
-        tangent_list = np.append(tangent_list, np.array([tangentHelp.dot((grad_list[idx]/la.norm(grad_list[idx])))]), axis=0)
+            tangent_list = np.empty((0,2))
+            for idx in drone_id_list:
+                tangent_list = np.append(tangent_list, np.array([self.tangentHelp.dot((grad_list[idx]/la.norm(grad_list[idx])))]), axis=0)
 
-    e_list = np.array([])
-    for i in drone_id_list:
-        e_list = np.append(e_list, impPath(X[i*2], X[i*2 + 1], radius))
+            e_list = np.array([])
+            for i in drone_id_list:
+                e_list = np.append(e_list, self.impPath(X[i*2], X[i*2 + 1], radius))
 
-    # This small u is our circle following control input (velocity)
-    # The form is: 
-    # ControlInput = FollowCircleError + RotateOnCircle + StayInFormationDistance
-    formation_list = np.empty((0,2))
-    for idx in drone_id_list:
-        i = idx - 1
-        if idx == 0:
-            i = number_of_drones - 1 # A delayed counter that wraps in the beginning.
-        formation_list = np.append(formation_list, np.array([[(err_dist_list[idx]*unit_vector_list[idx][0] + err_dist_list[i]*unit_vector_list[idx][0])*kf, (err_dist_list[idx]*unit_vector_list[idx][1] + err_dist_list[idx]*unit_vector_list[i][1])*kf]]), axis=0)
+            # This small u is our circle following control input (velocity)
+            # The form is: 
+            # ControlInput = FollowCircleError + RotateOnCircle + StayInFormationDistance
+            formation_list = np.empty((0,2))
+            for idx in drone_id_list:
+                i = idx - 1
+                if idx == 0:
+                    i = self.number_of_drones - 1 # A delayed counter that wraps in the beginning.
+                formation_list = np.append(formation_list, np.array([[(err_dist_list[idx]*unit_vector_list[idx][0] + err_dist_list[i]*unit_vector_list[idx][0])*kf, (err_dist_list[idx]*unit_vector_list[idx][1] + err_dist_list[idx]*unit_vector_list[i][1])*kf]]), axis=0)
 
-    #print(err_dist_list)
-    u_list = np.empty((0,2))
-    for idx in drone_id_list:
-        u_list = np.append(u_list, np.array([ke*(-e_list[idx])*grad_list[idx] + kt*tangent_list[idx] + formation_list[idx]]), axis=0)
-    
-    for idx in drone_id_list:
-        u_list[idx] = sigmoid(u_list[idx])
-    
-    zero = np.array([0, 0])
-    #ut = np.array([0.25, 0.25]) # move the middle drone qt a little bit in x and y
-    ut = np.array([0, 0])
-    #ut = impPath(qt.xyz[0], qt.xyz[1], 2)
+            #print(err_dist_list)
+            u_list = np.empty((0,2))
+            for idx in drone_id_list:
+                u_list = np.append(u_list, np.array([ke*(-e_list[idx])*grad_list[idx] + kt*tangent_list[idx] + formation_list[idx]]), axis=0)
+            
+            for idx in drone_id_list:
+                u_list[idx] = self.sigmoid(u_list[idx])
+            
+            zero = np.array([0, 0])
+            #ut = np.array([0.25, 0.25]) # move the middle drone qt a little bit in x and y
+            ut = np.array([0, 0])
+            #ut = impPath(qt.xyz[0], qt.xyz[1], 2)
 
-    qt.set_v_2D_alt_lya(ut, -alt_d)
-    
-    for idx in drone_id_list:
-        qc_list[idx].set_v_2D_alt_lya(u_list[idx] + ut, -alt_d)
+            self.qt.set_v_2D_alt_lya(ut, -self.alt_d)
+            
+            for idx in drone_id_list:
+                self.qc_list[idx].set_v_2D_alt_lya(u_list[idx] + ut, -self.alt_d)
 
-    qt.step(dt)
-    for idx in drone_id_list:
-        qc_list[idx].step(dt)
+            self.qt.step(self.dt)
+            for idx in drone_id_list:
+                self.qc_list[idx].step(self.dt)
 
-    # Animation
-    if it % frames == 0 and do_animation == True:
+            # Animation
+            if self.it % self.frames == 0 and do_animation == True:
 
-        pl.figure(0)
-        axis3d.cla()
-        ani.draw3d(axis3d, qt.xyz, qt.Rot_bn(), quadcolor[0])
-        for idx in drone_id_list:
-            ani.draw3d(axis3d, qc_list[idx].xyz, qc_list[idx].Rot_bn(), quadcolor[idx+1])
-            #ani.draw3d(axis3d, q1.xyz, q1.Rot_bn(), quadcolor[1])
-            #ani.draw3d(axis3d, q2.xyz, q2.Rot_bn(), quadcolor[2])
-            #ani.draw3d(axis3d, q3.xyz, q3.Rot_bn(), quadcolor[3])
-        axis3d.set_xlim(-10, 10)
-        axis3d.set_ylim(-10, 10)
-        axis3d.set_zlim(0, 10)
-        axis3d.set_xlabel('South [m]')
-        axis3d.set_ylabel('East [m]')
-        axis3d.set_zlabel('Up [m]')
-        axis3d.set_title("Time %.3f s" % t)
-        pl.pause(0.001)
-        pl.draw()
-        # namepic = '%i'%it
-        # digits = len(str(it))
-        # for j in range(0, 5-digits):
-        #    namepic = '0' + namepic
-        # pl.savefig("./images/%s.png"%namepic)
+                pl.figure(0)
+                self.axis3d.cla()
+                ani.draw3d(self.axis3d, self.qt.xyz, self.qt.Rot_bn(), self.quadcolor[0])
+                for idx in drone_id_list:
+                    ani.draw3d(self.axis3d, self.qc_list[idx].xyz, self.qc_list[idx].Rot_bn(), self.quadcolor[idx+1])
+                    #ani.draw3d(axis3d, q1.xyz, q1.Rot_bn(), quadcolor[1])
+                    #ani.draw3d(axis3d, q2.xyz, q2.Rot_bn(), quadcolor[2])
+                    #ani.draw3d(axis3d, q3.xyz, q3.Rot_bn(), quadcolor[3])
+                self.axis3d.set_xlim(-10, 10)
+                self.axis3d.set_ylim(-10, 10)
+                self.axis3d.set_zlim(0, 10)
+                self.axis3d.set_xlabel('South [m]')
+                self.axis3d.set_ylabel('East [m]')
+                self.axis3d.set_zlabel('Up [m]')
+                self.axis3d.set_title("Time %.3f s" % self.t)
+                pl.pause(0.001)
+                pl.draw()
+                # namepic = '%i'%it
+                # digits = len(str(it))
+                # for j in range(0, 5-digits):
+                #    namepic = '0' + namepic
+                # pl.savefig("./images/%s.png"%namepic)
 
-        cid = fig.canvas.mpl_connect('key_press_event', on_key)
+                #cid = fig.canvas.mpl_connect('key_press_event', on_key)
 
-    # Log
-    p = 0
-    for idx in drone_id_list: 
-        q_log_list[p].xyz_h[it, :] = qc_list[idx].xyz
-        q_log_list[p].att_h[it, :] = qc_list[idx].att
-        q_log_list[p].w_h[it, :] = qc_list[idx].w
-        q_log_list[p].v_ned_h[it, :] = qc_list[idx].v_ned
-        q_log_list[p].formation_error[it] = err_dist_list[idx]
-        q_log_list[p].circle_error[it] = e_list[idx]
-        p += 1
-        
-    qt_log.xyz_h[it, :] = qt.xyz
-    qt_log.att_h[it, :] = qt.att
-    qt_log.w_h[it, :] = qt.w
-    qt_log.v_ned_h[it, :] = qt.v_ned
+            # Log
+            p = 0
+            for idx in drone_id_list: 
+                self.q_log_list[p].xyz_h[self.it, :] = self.qc_list[idx].xyz
+                self.q_log_list[p].att_h[self.it, :] = self.qc_list[idx].att
+                self.q_log_list[p].w_h[self.it, :] = self.qc_list[idx].w
+                self.q_log_list[p].v_ned_h[self.it, :] = self.qc_list[idx].v_ned
+                self.q_log_list[p].formation_error[self.it] = err_dist_list[idx]
+                self.q_log_list[p].circle_error[self.it] = e_list[idx]
+                p += 1
+                
+            self.qt_log.xyz_h[self.it, :] = self.qt.xyz
+            self.qt_log.att_h[self.it, :] = self.qt.att
+            self.qt_log.w_h[self.it, :] = self.qt.w
+            self.qt_log.v_ned_h[self.it, :] = self.qt.v_ned
 
-    it += 1
+            self.it += 1
 
-    # Stop if crash
-    for q in qc_list:
-        if q.crashed==1:
-            break
+            # Stop if crash
+            for q in self.qc_list:
+                if q.crashed==1:
+                    break
+        print(self.number_of_drones)
+        return self.q_log_list, self.qt_log, drone_id_list # and also return qt_log...
 
+
+quadsim = quadSimulator(tf, dt, time, it, frames, n_drones)
+q_log_list, qt_log, drone_id_list = quadsim.run_simulation()
+quadcolor = quadsim.quadcolor
+number_of_drones = quadsim.number_of_drones
 
 
 pl.figure(1)
