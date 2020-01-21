@@ -75,7 +75,7 @@ class quadrotor:
         # Our additions for GNC
         self.rel_xyz = 0
         self.neighbour_vector = 0
-        self.cooldown = 90*20
+        self.cooldown = 150*20
         self.identification = idx
 
     ### GNC Functions ###

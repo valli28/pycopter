@@ -10,51 +10,120 @@ import animation as ani
 from quadsim import quadSimulator
 
 class bigLogger:
-    def __init__(self, repetitions, time):
+    def __init__(self, repetitions, time, number_of_drones):
 
         self.n = repetitions
+        self.t = time
+        self.n_drones = number_of_drones
 
-        self.xyz_h = np.empty((self.n, time, 3))
-        self.formation_error = np.empty((self.n, time))
-        self.circle_error = np.empty((self.n, time))
+        #self.xyz_h = np.empty((self.n, time, 3, 1))
+        #self.formation_error = np.empty((self.n, 1, time))
+        #self.circle_error = np.empty((self.n, 0, time))
+
+
+        self.xyz_h = np.empty((self.t, 3, self.n_drones, self.n))
+        self.formation_error = np.empty((self.t, self.n_drones, self.n))
+        self.circle_error = np.empty((self.t, self.n_drones, self.n))
+
+
+    def add_stats(self, rep, number_of_drones, q_logger):
+        # Input the data into the log arrays        
+        if rep == 0: # If this is the first run, initialize the number of drones again.
+            self.n_drones = number_of_drones
+            self.xyz_h = np.empty((self.t, 3, self.n_drones, self.n))
+            self.formation_error = np.empty((self.t, self.n_drones, self.n))
+            self.circle_error = np.empty((self.t, self.n_drones, self.n))
+
+        for idx in range(0, self.n_drones):
+            self.xyz_h[:, :, idx, rep] = q_logger[idx].xyz_h
+            self.formation_error[:, idx, rep] = q_logger[idx].formation_error
+            self.circle_error[:, idx, rep] = q_logger[idx].circle_error
+
+        
 
     def calculate_descriptive_statistics(self):
         print("Calculating descriptive statistics from " + str(self.n) + " repetitions") 
-        return self.n
 
-    def add_stats(self, rep, xyz, formation, circle):
-        self.xyz_h[rep] = xyz
-        self.formation_error[rep] = formation
-        self.circle_error[rep] = circle
+        # Means
+        pos_mean = np.mean(self.xyz_h, axis=3)
+        pos_mean = np.mean(pos_mean, axis=2)
 
+        formation_mean = np.mean(self.formation_error, axis=2)
+        formation_mean = np.mean(formation_mean, axis=1)
+
+        circle_mean = np.mean(self.circle_error, axis=2)
+        circle_mean = np.mean(circle_mean, axis=1)
+
+        pos_var = np.var(self.xyz_h, axis=3)
+        pos_var = np.var(pos_var, axis=2)
+
+        formation_var = np.var(self.formation_error, axis=2)
+        formation_var = np.var(formation_var, axis=1)
+
+        circle_var = np.var(self.circle_error, axis=2)
+        circle_var = np.var(circle_var, axis=1)
+
+        return pos_mean, pos_var, formation_mean, formation_var, circle_mean, circle_var
 
 
 # Simulation parameters
-tf = 300
+tf = 400
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
 frames = 50
-n_drones = 3
+n_drones = 4
 
 # Statistics logging parameters
-n = 10
-logger = bigLogger(n, int(tf/dt))
+n = 50
+logger = bigLogger(n, int(tf/dt), n_drones)
+
+try:
+    logger.xyz_h = np.load('data_xyz.npy')
+    logger.formation_error = np.load('data_formation.npy')
+    logger.circle_error = np.load('data_circle.npy')
+except (IOError):
+    print("There is no saved data from previous simulations. Starting simulations.")
+    for repetition in range(0, n):
+        print("Run number " + str(repetition+1))
+        n_drones = 4
+
+        sim = quadSimulator(tf, dt, time, it, frames, n_drones)
+        q_log_list, qt_log, drone_id_list = sim.run_simulation()    
+        quadcolor = sim.quadcolor
+        n_drones = sim.number_of_drones
+
+        del sim
+        
+        logger.add_stats(repetition, n_drones, q_log_list)
+
+    np.save('data_xyz', logger.xyz_h) 
+    np.save('data_formation', logger.formation_error) 
+    np.save('data_circle', logger.circle_error) 
+
+pos_mean, pos_var, formation_mean, formation_var, circle_mean, circle_var = logger.calculate_descriptive_statistics()
 
 
-for repetition in range(0, n):
-    print("Run number " + str(repetition+1))
+# Formation error plot
+pl.figure(1)
+pl.title("Formation Error of " + str(n_drones) + " Drones Over Time [m]")
+pl.plot(time, formation_mean, label="q", color='r')
+pl.fill_between(time, formation_mean + formation_var, formation_mean - formation_var, color='r', alpha=0.5)
+pl.xlabel("Time [s]")
+pl.ylabel("Formation Error [m]")
+pl.grid()
+pl.legend()
+ 
+# Circle error plot
+pl.figure(2)
+pl.title("Circle Error of " + str(n_drones) + " Drones Over Time [m]")
+pl.plot(time, circle_mean, label="q", color='r')
+pl.fill_between(time, circle_mean + circle_var, circle_mean - circle_var, color='r', alpha=0.5)
+pl.xlabel("Time [s]")
+pl.ylabel("Circle Error Squared [m]")
+pl.grid()
+pl.legend()
 
-    sim = quadSimulator(tf, dt, time, it, frames, n_drones)
-    q_log_list, qt_log, drone_id_list = sim.run_simulation()    
-    quadcolor = sim.quadcolor
-    number_of_drones = sim.number_of_drones
 
-    for idx in range(0, number_of_drones):
-        logger.add_stats(repetition, q_log_list[idx].xyz_h, q_log_list[idx].formation_error, q_log_list[idx].circle_error)
-
-
-print(logger.formation_error.shape)
-
-stats = logger.calculate_descriptive_statistics()
+pl.pause(0)
 

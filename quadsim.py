@@ -125,7 +125,7 @@ class quadSimulator:
         kt = 0.001  # Gain for orbiting
         kf = 0.08 *0.5 # Gain for formation
 
-        drone_added = False
+        drone_added = True
         #drone_added = True
 
         do_animation = False
@@ -187,7 +187,7 @@ class quadSimulator:
                     o = 0 
                 inter_angle_list[idx] = self.angle_between_unit_vectors(self.qc_list[i].xyz - self.qc_list[idx].xyz, self.qc_list[o].xyz - self.qc_list[idx].xyz)
             for idx in range (0, self.number_of_drones):
-                if inter_angle_list[idx] < 35:
+                if inter_angle_list[idx] < 30:
                     if self.qc_list[idx].cooldown < 0 and self.qc_list[i].cooldown < 0 and self.qc_list[o].cooldown < 0:
                         i = idx - 1 # A delayed counter that wraps in the beginning.
                         o = idx + 1 # A hastened counter that wraps in the end.
@@ -200,7 +200,7 @@ class quadSimulator:
                         get = self.qc_list[o], self.qc_list[idx]
                         self.qc_list[idx], self.qc_list[o] = get
                         # Reset the cooldown on these drones
-                        self.qc_list[idx].cooldown = self.qc_list[o].cooldown = self.qc_list[i].cooldown = 120*20
+                        self.qc_list[idx].cooldown = self.qc_list[o].cooldown = self.qc_list[i].cooldown = 150*20
                         self.number_of_swaps += 1
                         # Swap the colors as well, so it won't look weird in the graphs
                         #get_color = quadcolor[o+1], quadcolor[idx+1]
@@ -248,9 +248,9 @@ class quadSimulator:
             for idx in drone_id_list:
                 u_list[idx] = self.sigmoid(u_list[idx])
             
-            zero = np.array([0, 0])
-            #ut = np.array([0.25, 0.25]) # move the middle drone qt a little bit in x and y
-            ut = np.array([0, 0])
+            #zero = np.array([0, 0])
+            ut = np.array([0.25, 0.25]) # move the middle drone qt a little bit in x and y
+            #ut = np.array([0, 0])
             #ut = impPath(qt.xyz[0], qt.xyz[1], 2)
 
             self.qt.set_v_2D_alt_lya(ut, -self.alt_d)
