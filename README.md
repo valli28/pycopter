@@ -27,8 +27,15 @@ Added files:
 final_assignment_GNC.py
 final_assignment_GNCv2.py
 final_assigmnent_test.py
+quadsim.py
 
 Edited files:
 quadlog.py
 quadrotor.py
 
+3. GUIDE TO RUN CODE BY STUDENTS
+The script that performs many simulations and collects all the results is final_assigment_test.py where different parameters can be configured for the simulation. Mind that the number of drones n_drones has to be configured both before and inside the for-loop. After the n-number of simulations have been performed, the results are saved as .npy files in the same folder. If these files are present in the folder when the script is run, the simulations are not run, but the statistics are calculated and plotted instead. 
+
+The final_assigment_GNCv2 runs only one simulation and was created for development purposes.
+
+The quadsim.py file includes a new class the performs one simulation.
