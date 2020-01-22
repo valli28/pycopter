@@ -10,13 +10,13 @@ import animation as ani
 from quadsim import quadSimulator
 
 # Simulation parameters
-tf = 1000
+tf = 300
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
 frames = 50
 
-n_drones = 6
+n_drones = 3
 
 
 # Initialize simulation class (all the stuff we did)

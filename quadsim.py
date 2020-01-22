@@ -122,7 +122,7 @@ class quadSimulator:
         inter_angle_list = np.zeros(self.number_of_drones)
 
         ke = 0.00285*2 *0.7  # Gain for going towards circle
-        kt = 0.001  # Gain for orbiting
+        kt = 0.01*7  # Gain for orbiting
         kf = 0.08 *0.5 # Gain for formation
 
         drone_added = True

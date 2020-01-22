@@ -44,9 +44,24 @@ class bigLogger:
     def calculate_descriptive_statistics(self):
         print("Calculating descriptive statistics from " + str(self.n) + " repetitions") 
 
+        # Find faulty data where the simulation went very wrong and drones flipped out and delete that test.
+        # arr = arr[ (arr >= 6) & (arr <= 10) ]
+        indeces = np.array([])
+        for i in range(0, n):
+            for idx in range(0, self.n_drones):
+                print(np.amax(np.abs(self.circle_error[:, idx, i])))
+                if np.amax(np.abs(self.circle_error[:, idx, i])) > 10:
+                    if i not in indeces:
+                        indeces = np.append(indeces, i)
+                        print("Delete test number " + str(i))
+
+        
+        self.xyz_h = np.delete(self.xyz_h, indeces, axis = 3)
+        self.formation_error = np.delete(self.formation_error, indeces, axis = 2)
+        self.circle_error = np.delete(self.circle_error, indeces, axis = 2)
+
         # Means
         pos_mean = np.mean(self.xyz_h, axis=3)
-        pos_mean = np.mean(pos_mean, axis=2)
 
         formation_mean = np.mean(self.formation_error, axis=2)
         formation_mean = np.mean(formation_mean, axis=1)
@@ -55,7 +70,6 @@ class bigLogger:
         circle_mean = np.mean(circle_mean, axis=1)
 
         pos_var = np.var(self.xyz_h, axis=3)
-        pos_var = np.var(pos_var, axis=2)
 
         formation_var = np.var(self.formation_error, axis=2)
         formation_var = np.var(formation_var, axis=1)
@@ -67,7 +81,7 @@ class bigLogger:
 
 
 # Simulation parameters
-tf = 400
+tf = 500
 dt = 5e-2
 time = np.linspace(0, tf, tf/dt)
 it = 0
@@ -124,6 +138,15 @@ pl.ylabel("Circle Error Squared [m]")
 pl.grid()
 pl.legend()
 
+
+# 2D position plot
+pl.figure(3)
+pl.title("2D position of" + str(n_drones))
+pl.plot(pos_mean[:, 0], pos_mean[:, 1], label="q")
+pl.xlabel("x-position [m]")
+pl.ylabel("y-position [m]")
+pl.grid()
+pl.legend()
 
 pl.pause(0)
 

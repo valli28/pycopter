@@ -23,11 +23,12 @@ ex_triangle_2D.py: A team of three quadcopters forming an equilateral triangle
 Additions for the GNC course made by Martin S. Metze, Nicolai H. Malle, Thor M Fischer and Valthor B. Gudmundsson:
 Scripts for the final assignment due 17th of January 2020:
 
-Additions:
+Added files:
 final_assignment_GNC.py
 final_assignment_GNCv2.py
+final_assigmnent_test.py
 
-Edits:
+Edited files:
 quadlog.py
 quadrotor.py
 
